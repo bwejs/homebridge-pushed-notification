@@ -1,4 +1,3 @@
-var request = require('request');
 var apn = require('node-apn');
 
 var Service;
@@ -7,7 +6,7 @@ var Characteristic;
 module.exports = function (homebridge) {
 	Service = homebridge.hap.Service;
 	Characteristic = homebridge.hap.Characteristic;
-	homebridge.registerAccessory("homebridge-pushed-notifications", "GetPushedNotification", PushedNotificationAccessory);
+	homebridge.registerAccessory("homebridge-pushed-notification", "GetPushedNotification", PushedNotificationAccessory);
 }
 
 function PushedNotificationAccessory(log, config) {
