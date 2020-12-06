@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "request": "^2.65.0"
+    "node-apn": "~3.0.x"
   },
   "engines": {
     "node": ">=0.12.0",
