@@ -66,7 +66,7 @@ function PushedNotificationAccessory(log, config) {
 	
 		apnProvider.send(note, this.tokensToSendTo).then( (result) => {
 			// see documentation for an explanation of result
-			that.log('Notification send result is: ' + result)
+			that.log('Notification send result is: ' + JSON.stringify(result))
 		});
 	}
 }
