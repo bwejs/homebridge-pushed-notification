@@ -49,6 +49,8 @@ function PushedNotificationAccessory(log, config) {
 
 	var apnProvider = new apn.Provider(options);
 
+	let that = this
+
 	this.SendNotification = function() {
 		this.log('Send notification to GetPushed: ' + this.notificationMessage);
 
@@ -64,6 +66,7 @@ function PushedNotificationAccessory(log, config) {
 	
 		apnProvider.send(note, this.tokensToSendTo).then( (result) => {
 			// see documentation for an explanation of result
+			that.log('Notification send result is: ' + result)
 		});
 	}
 }
