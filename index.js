@@ -38,8 +38,8 @@ function PushedNotificationAccessory(log, config) {
   
 	var options = {
 		token: {
-			key: __dirname + "/AuthKey_T39NDAWQ9T.p8",
-			keyId: "T39NDAWQ9T",
+			key: __dirname + "/AuthKey_V7N96X5446.p8",
+			keyId: "V7N96X5446",
 			teamId: "TQ4Y7TT2V3"
 		},
 		production: false
