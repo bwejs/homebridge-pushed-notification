@@ -1,4 +1,5 @@
 var apn = require('node-apn');
+var inherits = require('util').inherits;
 
 var Service;
 var Characteristic;
