@@ -9,7 +9,7 @@ module.exports = function (homebridge) {
 	homebridge.registerAccessory("homebridge-pushed-notification", "GetPushedNotification", PushedNotificationAccessory);
 }
 
-function PushedNotificationAccessory(log, config) {
+function PushedNotificationAccessory(log, config, api) {
 	this.log = log;
 	
 	this.tokensToSendTo = [
@@ -33,6 +33,7 @@ function PushedNotificationAccessory(log, config) {
 	this.log(" sound " + this.notificationSound);
 	this.log(" message " + this.notificationMessage);
 	this.log(" mute notification interval in sec " + this.muteNotificationIntervalInSec);
+	this.log(" storage: " + api.user.storagePath());
 
 	this.serviceMuted = false;
 	this.stateValue = false;
