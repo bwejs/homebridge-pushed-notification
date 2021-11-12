@@ -6,6 +6,8 @@ var Characteristic;
 module.exports = function (homebridge) {
 	Service = homebridge.hap.Service;
 	Characteristic = homebridge.hap.Characteristic;
+    inherits(PushedNotificationAccessory.CustomNotification, Characteristic);
+
 	homebridge.registerAccessory("homebridge-pushed-notification", "GetPushedNotification", PushedNotificationAccessory);
 }
 
