@@ -24,8 +24,6 @@ function PushedNotificationAccessory(log, config, api) {
 	this.notificationMessage = config['message'];
 	this.muteNotificationIntervalInSec = config['mute_notification_interval_in_sec'];
 	
-	this.useMotionDetectorAccessory = config['use_motion_sensor'];
-
 	this.log(" sound " + this.notificationSound);
 	this.log(" message " + this.notificationMessage);
 	this.log(" mute notification interval in sec " + this.muteNotificationIntervalInSec);
@@ -47,8 +45,8 @@ function PushedNotificationAccessory(log, config, api) {
 
 	let that = this
 
-	this.SendNotification = function() {
-		this.log('Send notification to GetPushed: ' + this.notificationMessage);
+	this.SendNotification = function(message) {
+		this.log('Send notification to GetPushed: ' + message);
 
 		var note = new apn.Notification();
 
@@ -57,7 +55,7 @@ function PushedNotificationAccessory(log, config, api) {
 		//note.sound = this.notificationSound;
 		// note.sound = "DoorBot.wav";
 		note.contentAvailable = 1;
-		note.alert = "\uD83D\uDCE7 \u2709 You have a new message";
+		note.alert = message;
 		note.topic = this.topic;
 	
 		apnProvider.send(note, this.tokensToSendTo).then( (result) => {
@@ -89,18 +87,14 @@ PushedNotificationAccessory.prototype = {
 
 			// Send GetPushed notification
 			if (this.serviceMuted === false) {
-				this.SendNotification();
+				this.SendNotification(this.notificationMessage);
 				
-				if (this.useMotionDetectorAccessory) {
-					this.mtnService.getCharacteristic(Characteristic.MotionDetected).setValue(1);
-				}
+            
 
 				// Mute further notifications for specified time
 				this.serviceMuted = true;
 				setTimeout(function() {
-					if (that.useMotionDetectorAccessory) {
-						that.mtnService.getCharacteristic(Characteristic.MotionDetected).setValue(0);
-					}
+					
 					
 					that.serviceMuted = false;
 					that.log("GetPushed un-muted");
@@ -132,10 +126,6 @@ PushedNotificationAccessory.prototype = {
 		.on('set', this.setValue.bind(this));
 		services.push(this.btnService);
 		
-		if (this.useMotionDetectorAccessory) {
-			this.mtnService = new Service.MotionSensor(this.name);
-			services.push(this.mtnService);
-		}
 
 		return services;
 	}
