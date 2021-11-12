@@ -23,7 +23,9 @@ function PushedNotificationAccessory(log, config, api) {
 						];
 	this.accessoryLabel = config['accessory'];
 	this.name = config['name'];
-
+    this.keyId = config['push_key'];
+    this.teamId = config['team_id'];
+    
 	this.notificationSound = config['sound'];
 	this.notificationMessage = config['message'];
 	this.muteNotificationIntervalInSec = config['mute_notification_interval_in_sec'];
@@ -40,9 +42,9 @@ function PushedNotificationAccessory(log, config, api) {
   
 	var options = {
 		token: {
-			key: __dirname + "/AuthKey_V7N96X5446.p8",
-			keyId: "V7N96X5446",
-			teamId: "TQ4Y7TT2V3"
+			key: api.user.storagePath() + "/AuthKey_" + this.keyId + ".p8",
+			keyId: this.keyId,
+			teamId: this.teamId
 		},
 		production: false
 	};
@@ -56,9 +58,9 @@ function PushedNotificationAccessory(log, config, api) {
 
 		var note = new apn.Notification();
 
-		note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+		//note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
 		note.badge = 0;
-		note.sound = this.notificationSound;
+		//note.sound = this.notificationSound;
 		// note.sound = "DoorBot.wav";
 		note.contentAvailable = 1;
 		note.alert = "\uD83D\uDCE7 \u2709 You have a new message";
