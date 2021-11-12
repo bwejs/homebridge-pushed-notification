@@ -12,15 +12,9 @@ module.exports = function (homebridge) {
 function PushedNotificationAccessory(log, config, api) {
 	this.log = log;
 	
-	this.tokensToSendTo = [
-							"e862580646e2b3be74befc35580341727a3935c5a3ab9b9e2dd41b35754be058", // Arye's iPhone 13 mini
-							"47312ac14a43a69470cd8912371f70b9d96bb94af3d6ea55948093cb51ed108b", // Tehila's iPhone 12 mini
-							"a621a44c7afe11ae2c27569fc5213292d27dbe8b95944b9c519ad1422abca901", // Home's iPad Pro 12.9 1st Gen (Kitchen)
-							"ae5ac8d8e850049180f830282fd2268b69fba183ab7cf24848b87f4c09f521b1", // Home's Music iPad (Living room)
-							"f88e03e7eaf84b43f6a1c471a45f582bb0711accdefd5de8c7e389b2b43d5b5e", // Home's iPad Pro 12.9 2nd Gen (Entrance)
-							"7b80590f7407fef532f9091351ec81d65c973a50f089179811a1e84a031d9ca0", // Home's iPad mini 5th Gen (Bedroom)
-							"f45c0482f75863c6a807e5116466b4bcb8984608b90312bf9d178051ff595d14"  // Arye's iPad mini 6th Gen
-						];
+	this.tokensToSendTo = config['push_token'];
+    this.topic = config['push_topic'];
+
 	this.accessoryLabel = config['accessory'];
 	this.name = config['name'];
     this.keyId = config['push_key'];
@@ -64,7 +58,7 @@ function PushedNotificationAccessory(log, config, api) {
 		// note.sound = "DoorBot.wav";
 		note.contentAvailable = 1;
 		note.alert = "\uD83D\uDCE7 \u2709 You have a new message";
-		note.topic = "com.supersmarket.Ring-Sound-Player";
+		note.topic = this.topic;
 	
 		apnProvider.send(note, this.tokensToSendTo).then( (result) => {
 			// see documentation for an explanation of result
