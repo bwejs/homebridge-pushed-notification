@@ -23,7 +23,7 @@ function PushedNotificationAccessory(log, config, api) {
 	this.notificationSound = config['sound'];
 	this.notificationMessage = config['message'];
 	this.muteNotificationIntervalInSec = config['mute_notification_interval_in_sec'];
-	
+	this.lastSendNotification = "",
 	this.log(" sound " + this.notificationSound);
 	this.log(" message " + this.notificationMessage);
 	this.log(" mute notification interval in sec " + this.muteNotificationIntervalInSec);
@@ -65,6 +65,16 @@ function PushedNotificationAccessory(log, config, api) {
 	}
 }
 
+PushedNotificationAccessory.CustomNotification = function() {
+  Characteristic.call(this, 'Custom Notification', '9056BA41-435E-48DB-B64E-B637A9873ED4');
+  
+  this.setProps({
+    format: Characteristic.Formats.STRING,
+    perms: [Characteristic.Perms.READ, Characteristic.Perms.WRITE, Characteristic.Perms.NOTIFY]
+  });
+  
+  this.value = "";
+};
 
 PushedNotificationAccessory.prototype = {
 	getValue: function(callback) {
@@ -106,6 +116,17 @@ PushedNotificationAccessory.prototype = {
 		}
 		callback(null);
 	},
+    setCustomNotification: function (value, callback) {
+        this.log('sendValue ' + value);
+        if (value.length != 0) {
+            this.SendNotification(value);
+        }
+        this.lastSendNotification = value;
+        callback(null);
+    },
+getCustomNotification: function (callback) {
+    callback(this.lastSendNotification, null);
+},
 	identify: function (callback) {
 		this.log("Identify requested!");
 		callback();
@@ -125,6 +146,10 @@ PushedNotificationAccessory.prototype = {
 		.on('get', this.getValue.bind(this))
 		.on('set', this.setValue.bind(this));
 		services.push(this.btnService);
+        
+        this.btnService.addCharacteristic(PushedNotificationAccessory.CustomNotification)
+        .on('get', this.getCustomNotification.bind(this))
+        .on('set', this.setCustomNotification.bind(this));
 		
 
 		return services;
