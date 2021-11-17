@@ -15,7 +15,7 @@
     "url": "https://github.com/acc-ua/homebridge-pushed-notification/issues"
   },
   "dependencies": {
-    "node-apn": "~3.0.x"
+    "@parse/node-apn": "^5.0.0"
   },
   "engines": {
     "util": "^0.10.3",
