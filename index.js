@@ -51,12 +51,15 @@ class PushedNotificationAccessory {
         let that = this;
         let token = this.tokensToSendTo;
         let topic = this.topic;
-        this.SendNotification = function(message) {
+        this.wrappers = [];
+
+        this.SendNotification = function(message, expire) {
             this.log('Send notification to GetPushed: ' + message);
             
             var note = new apn.Notification();
-            
-            //note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+            if (expire > 0) {
+                note.expiry = Math.floor(Date.now() / 1000) + expire; // Expires 1 hour from now.
+            }
             note.badge = 0;
             //note.sound = this.notificationSound;
             // note.sound = "DoorBot.wav";
@@ -69,12 +72,36 @@ class PushedNotificationAccessory {
                 // see documentation for an explanation of result
                 that.log('Notification send result is: ' + JSON.stringify(result))
             });
+            this.checkAnyOn(this);
         }
+    }
+    checkAnyOn(that) {
+        that.log("Start Check Any On. " + that.name);
+        that.log("Start Check Any On. " + that.wrappers);
+        var isOn = false;
+        
+        var arrayLength = that.wrappers.length;
+        for (var i = 0; i < arrayLength; i++) {
+            
+            if (that.wrappers[i].cValue > 0) {
+                isOn = true;
+            }
+            that.log("Checking.");
+            //Do something
+        }
+        
+        
+//
+//        this.wrappers.forEach( wrapper =>
+//            {
+//
+//
+//        })
+        that.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(!!isOn);
     }
    
     getServices() {
         this.services = [];
-        this.wrappers = [];
 
         var infoService = new Service.AccessoryInformation();
         infoService
@@ -85,16 +112,24 @@ class PushedNotificationAccessory {
         
         this.config['channels'].forEach( channel =>
                                         {
-                                        var wrapper = new NotificationHandler(channel['name'], this.SendNotification, this.log, channel['defaultMessage']);
+                                        var wrapper = new NotificationHandler(channel['name'], this.SendNotification, this.log, channel['defaultMessage'], this.checkAnyOn, this);
                                         this.services.push(wrapper.getService());
                                         this.wrappers.push(wrapper);
         }
         );
+        const name = "Any On";
+        const subtype = name;
+             this.contactService = new Service.ContactSensor(name, subtype);
+        // create a new Contact Sensor service
+      //    this.contactService = new Service(Service.ContactSensor);
+        this.services.push(this.contactService);
 
+        /*  // create handlers for required characteristics
+          this.contactService.getCharacteristic(Characteristic.ContactSensorState)
+            .onGet(this.handleContactSensorStateGet.bind(this));
+         */
         
-       
-        
-        
+        this.checkAnyOn(this);
         return this.services;
     }
     identify(callback) {
@@ -107,7 +142,7 @@ class PushedNotificationAccessory {
     setCustomNotification(value, callback) {
         this.log('sendValue ' + value);
         if (value.length != 0) {
-            this.SendNotification(value);
+            this.SendNotification(value, 0);
         }
         this.lastSendNotification = value;
         callback(null);
@@ -145,7 +180,7 @@ CountdownValue = function(max) {
 };
 
 class NotificationHandler {
-    constructor(name, sendFunction, log, message) {
+    constructor(name, sendFunction, log, message, checkAnyOn, that) {
         this.message = message;
         this.name = name;
         this.sendFunction = sendFunction
@@ -153,6 +188,9 @@ class NotificationHandler {
         this.stateValue = false;
         this.cValue = 0;
         this.log("Init with name " + message);
+        this.resetInterval = 120;
+        this.checkAnyOn = checkAnyOn;
+        this.that = that;
     }
     
     getService() {
@@ -177,10 +215,15 @@ class NotificationHandler {
         return this.service;
     }
     setTimer() {
+      this.checkAnyOn(this.that);
       clearTimeout(this.timer);
       if (this.cValue == 0) {
           this.log.info("Send Value timeout at 0");
-        this.sendFunction(this.message);
+          this.sendFunction(this.message, this.resetInterval);
+          if (this.resetInterval > 0) {
+              this.cValue = this.resetInterval;
+              this.contdownCharacteristic.updateValue(this.cValue);
+          }
       }
       if (this.cValue <= 0) {
         return;
@@ -204,6 +247,7 @@ class NotificationHandler {
         } else {
             clearTimeout(this.timer);
         }
+        this.checkAnyOn(this.that);
         callback();
     }
 
@@ -230,7 +274,7 @@ class NotificationHandler {
                 that.service.setCharacteristic(Characteristic.On, false)
             }, 500 );
             
-            this.sendFunction(this.message);
+            this.sendFunction(this.message, 0);
             callback(null);
 
         } else {
