@@ -72,7 +72,6 @@ class PushedNotificationAccessory {
                 // see documentation for an explanation of result
                 that.log('Notification send result is: ' + JSON.stringify(result))
             });
-            this.checkAnyOn(this);
         }
     }
     checkAnyOn(that) {
