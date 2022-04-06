@@ -8,8 +8,11 @@ module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     inherits(CustomNotification, Characteristic);
+    inherits(ResetInterval, Characteristic);
+    inherits(DefaultInterval, Characteristic);
     inherits(NotificationService, Service);
     inherits(CountdownValue, Characteristic);
+    inherits(StartWithDefaultInterval, Characteristic);
 
     homebridge.registerAccessory("homebridge-pushed-notification", "GetPushedNotification", PushedNotificationAccessory);
 }
@@ -52,15 +55,19 @@ class PushedNotificationAccessory {
         let token = this.tokensToSendTo;
         let topic = this.topic;
         this.wrappers = [];
+        this.isAnyOn = false;
+        this.lastNumberActive = 0;
+        this.resetInterval = 120;
+        this.defaultInterval = 600;
 
         this.SendNotification = function(message, expire) {
             this.log('Send notification to GetPushed: ' + message);
             
             var note = new apn.Notification();
             if (expire > 0) {
-                note.expiry = Math.floor(Date.now() / 1000) + expire; // Expires 1 hour from now.
+                note.expiry = Math.floor(Date.now() / 1000) + expire;
             }
-            note.badge = 0;
+            note.badge = that.numberOfActives();
             //note.sound = this.notificationSound;
             // note.sound = "DoorBot.wav";
             note.contentAvailable = 1;
@@ -73,30 +80,66 @@ class PushedNotificationAccessory {
                 that.log('Notification send result is: ' + JSON.stringify(result))
             });
         }
+        this.ClearNotification = function (newNumberActive) {
+            this.log('clear notification to GetPushed: ');
+            
+            var note = new apn.Notification();
+          
+            note.badge = newNumberActive;
+            //note.sound = this.notificationSound;
+            // note.sound = "DoorBot.wav";
+            note.contentAvailable = 1;
+//            note.alert = message;
+//            note.payload = { 'aps': {'interruption-level': 'time-sensitive', 'badge' : 7 }};
+            note.topic = topic;
+            
+            apnProvider.send(note, token).then( (result) => {
+                // see documentation for an explanation of result
+                that.log('Notification send result is: for clear. ' + JSON.stringify(result))
+            });
+        }
+        this.numberOfActives = function () {
+            var number = 0;
+            var arrayLength = that.wrappers.length;
+            for (var i = 0; i < arrayLength; i++) {
+                
+                if (that.wrappers[i].cValue > 0) {
+                    number++;
+                }
+            }
+            return number
+        }
     }
-    checkAnyOn(that) {
-        that.log("Start Check Any On. " + that.name);
-        that.log("Start Check Any On. " + that.wrappers);
+    
+    checkAnyOn() {
+        var oldValue = this.isAnyOn;
+
+        this.log("Start Check Any On. " + this.name);
+        this.log("Start Check Any On. " + this.wrappers);
         var isOn = false;
         
-        var arrayLength = that.wrappers.length;
+        var arrayLength = this.wrappers.length;
         for (var i = 0; i < arrayLength; i++) {
             
-            if (that.wrappers[i].cValue > 0) {
+            if (this.wrappers[i].cValue > 0) {
                 isOn = true;
             }
-            that.log("Checking.");
+            this.log("Checking.");
             //Do something
         }
         
+        var newValue = !!isOn;
+        this.isAnyOn = newValue;
         
-//
-//        this.wrappers.forEach( wrapper =>
-//            {
-//
-//
-//        })
-        that.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(!!isOn);
+        if(!newValue && oldValue) {
+            //that.ClearNotification()
+        }
+        var newNumberActive = this.numberOfActives()
+        if(this.lastNumberActive != newNumberActive) {
+            this.ClearNotification(newNumberActive);
+        }
+        this.lastNumberActive = newNumberActive;
+        this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(newValue);
     }
    
     getServices() {
@@ -111,14 +154,26 @@ class PushedNotificationAccessory {
         
         this.config['channels'].forEach( channel =>
                                         {
-                                        var wrapper = new NotificationHandler(channel['name'], this.SendNotification, this.log, channel['defaultMessage'], this.checkAnyOn, this);
+                                        var wrapper = new NotificationHandler(channel['name'], this.log, channel['defaultMessage'], this);
                                         this.services.push(wrapper.getService());
                                         this.wrappers.push(wrapper);
         }
         );
         const name = "Any On";
         const subtype = name;
-             this.contactService = new Service.ContactSensor(name, subtype);
+        this.contactService = new Service.ContactSensor(name, subtype);
+        
+        this.resetIntervalChar = this.contactService.addCharacteristic(ResetInterval)
+               .on('get', this.getResetIntervalValue.bind(this))
+               .on('set', this.setResetIntervalValue.bind(this))
+        .setProps({maxValue: 7200});
+        
+        
+        this.defaultIntervalChar = this.contactService.addCharacteristic(DefaultInterval)
+               .on('get', this.getDefaultIntervalValue.bind(this))
+               .on('set', this.setDefaultIntervalValue.bind(this))
+        .setProps({maxValue: 7200});
+        
         // create a new Contact Sensor service
       //    this.contactService = new Service(Service.ContactSensor);
         this.services.push(this.contactService);
@@ -146,6 +201,23 @@ class PushedNotificationAccessory {
         this.lastSendNotification = value;
         callback(null);
     }
+    
+    setResetIntervalValue(newValue, callback) {
+        this.resetInterval = newValue;
+        callback();
+    }
+    
+    getResetIntervalValue(callback) {
+        callback(null, this.resetInterval);
+    }
+    setDefaultIntervalValue(newValue, callback) {
+        this.defaultInterval = newValue;
+        callback();
+    }
+    
+    getDefaultIntervalValue(callback) {
+        callback(null, this.defaultInterval);
+    }
 }
 
 NotificationService = function(name) {
@@ -166,6 +238,40 @@ CustomNotification = function() {
     this.value = "";
 };
 
+ResetInterval = function() {
+    Characteristic.call(this, 'ResetInterval', 'EB064F24-CA1D-4FC3-8B63-3905089862AC');
+    
+    this.setProps({
+      format: Characteristic.Formats.UINT16,
+      perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY, Characteristic.Perms.WRITE],
+      unit : Characteristic.Units.SECONDS,
+    });
+    
+    this.value = "";
+};
+
+StartWithDefaultInterval = function() {
+    Characteristic.call(this, 'Start', 'EB064F24-CA1D-4FC3-8B63-3905089862BB');
+    
+    this.setProps({
+      format: Characteristic.Formats.BOOL,
+      perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY, Characteristic.Perms.WRITE],
+    });
+    
+    this.value = false;
+};
+
+DefaultInterval = function() {
+    Characteristic.call(this, 'DefaultInterval', '59F9A53E-352D-468F-ABFB-60E96AAC1CAC');
+    
+    this.setProps({
+      format: Characteristic.Formats.UINT16,
+      perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY, Characteristic.Perms.WRITE],
+      unit : Characteristic.Units.SECONDS,
+    });
+    
+    this.value = "";
+};
 
 
 CountdownValue = function(max) {
@@ -178,18 +284,17 @@ CountdownValue = function(max) {
   this.value = 0;
 };
 
+
 class NotificationHandler {
-    constructor(name, sendFunction, log, message, checkAnyOn, that) {
+    constructor(name, log, message,accessory) {
         this.message = message;
         this.name = name;
-        this.sendFunction = sendFunction
+        this.accessory = accessory
         this.log = log
         this.stateValue = false;
         this.cValue = 0;
         this.log("Init with name " + message);
-        this.resetInterval = 120;
-        this.checkAnyOn = checkAnyOn;
-        this.that = that;
+        this.DefaultInterval = 600;
     }
     
     getService() {
@@ -208,19 +313,24 @@ class NotificationHandler {
         this.contdownCharacteristic = this.service.addCharacteristic(CountdownValue)
                .on('get', this.getCountDownValue.bind(this))
                .on('set', this.setCountDownValue.bind(this))
-        .setProps({maxValue: 3600});
+        .setProps({maxValue: 7200});
         
+        
+        this.start = this.service.addCharacteristic(StartWithDefaultInterval)
+               .on('get', this.getStartWithDefaultInterval.bind(this))
+                .on('set', this.setStartWithDefaultInterval.bind(this))
+
         
         return this.service;
     }
     setTimer() {
-      this.checkAnyOn(this.that);
+      this.accessory.checkAnyOn(this.accessory);
       clearTimeout(this.timer);
       if (this.cValue == 0) {
           this.log.info("Send Value timeout at 0");
-          this.sendFunction(this.message, this.resetInterval);
-          if (this.resetInterval > 0) {
-              this.cValue = this.resetInterval;
+          this.accessory.SendNotification(this.message, this.accessory.resetInterval);
+          if (this.accessory.resetInterval > 0) {
+              this.cValue = this.accessory.resetInterval;
               this.contdownCharacteristic.updateValue(this.cValue);
           }
       }
@@ -246,12 +356,28 @@ class NotificationHandler {
         } else {
             clearTimeout(this.timer);
         }
-        this.checkAnyOn(this.that);
+        this.accessory.checkAnyOn(this.accessory);
         callback();
     }
 
     getCountDownValue(callback) {
         callback(null, this.cValue);
+    }
+    
+    
+    getStartWithDefaultInterval(callback) {
+        callback(null, false);
+    }
+    setStartWithDefaultInterval(newValue, callback) {
+        if (!!newValue) {
+            this.setCountDownValue(this.accessory.defaultInterval, callback);
+        } else {
+            callback();
+        }
+        var that = this;
+        setTimeout(function() {
+            that.service.setCharacteristic(StartWithDefaultInterval, false)
+        }, 500 );
     }
     
     
@@ -273,7 +399,7 @@ class NotificationHandler {
                 that.service.setCharacteristic(Characteristic.On, false)
             }, 500 );
             
-            this.sendFunction(this.message, 0);
+            this.accessory.SendNotification(this.message, 0);
             callback(null);
 
         } else {
