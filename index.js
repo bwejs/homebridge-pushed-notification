@@ -342,7 +342,11 @@ class NotificationHandler {
           if (this.cValue < 0) {
               this.cValue = 0;
           }
-        this.log(this.name + ' Counting down. ' + this.cValue);
+          if (this.value < 15) {
+              this.log(this.name + ' Counting down. ' + this.cValue);
+          } else if ((this.value % 15) == 0) {
+              this.log(this.name + ' Counting down. ' + this.cValue);
+          }
         this.contdownCharacteristic.updateValue(this.cValue);
         this.setTimer()
       }.bind(this), 1000);
