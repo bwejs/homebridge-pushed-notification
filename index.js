@@ -114,8 +114,8 @@ class PushedNotificationAccessory {
     checkAnyOn() {
         var oldValue = this.isAnyOn;
 
-        this.log("Start Check Any On. " + this.name);
-        this.log("Start Check Any On. " + this.wrappers);
+       // this.log("Start Check Any On. " + this.name);
+       /// this.log("Start Check Any On. " + this.wrappers);
         var isOn = false;
         
         var arrayLength = this.wrappers.length;
@@ -124,7 +124,7 @@ class PushedNotificationAccessory {
             if (this.wrappers[i].cValue > 0) {
                 isOn = true;
             }
-            this.log("Checking.");
+            //this.log("Checking.");
             //Do something
         }
         
@@ -136,6 +136,7 @@ class PushedNotificationAccessory {
         }
         var newNumberActive = this.numberOfActives()
         if(this.lastNumberActive != newNumberActive) {
+            this.log("Update Value for Active elements to " + newNumberActive);
             this.ClearNotification(newNumberActive);
         }
         this.lastNumberActive = newNumberActive;
