@@ -1,5 +1,6 @@
 var apn = require('@parse/node-apn');
 var inherits = require('util').inherits;
+const fs = require('fs');
 
 var Service;
 var Characteristic;
@@ -22,7 +23,7 @@ class PushedNotificationAccessory {
         var config = this.config;
         this.tokensToSendTo = this.config['push_token'];
         this.topic = config['push_topic'];
-        
+        this.storage = config['storage'];
         this.accessoryLabel = this.config['accessory'];
         this.name = config['name'];
         this.keyId = config['push_key'];
@@ -59,6 +60,26 @@ class PushedNotificationAccessory {
         this.lastNumberActive = 0;
         this.resetInterval = 120;
         this.defaultInterval = 600;
+        
+        if (this.storage != null) {
+            try {
+                
+                let rawdata = fs.readFileSync(this.storage);
+                let jsonContent = JSON.parse(rawdata);
+                let def = jsonContent.defaultInterval
+                this.log("defaultInterval:", def);
+                if (def != undefined) {
+                    this.defaultInterval = def;
+                }
+                let reset = jsonContent.resetInterval
+                this.log("resetInterval:", reset);
+                if (reset != undefined) {
+                    this.resetInterval = reset;
+                }
+            } catch(err) {
+                this.log(err);
+              }
+        }
 
         this.SendNotification = function(message, expire) {
             this.log('Send notification to GetPushed: ' + message);
@@ -110,6 +131,24 @@ class PushedNotificationAccessory {
             return number
         }
     }
+    
+    
+    persistData() {
+        if (this.storage != null) {
+            try {
+                let json = {
+                    defaultInterval: this.defaultInterval,
+                    resetInterval: this.resetInterval
+                };
+                 
+                let data = JSON.stringify(json);
+                fs.writeFileSync(this.storage, data);
+            } catch(err) {
+                this.log(err);
+              }
+        }
+    }
+    
     
     checkAnyOn() {
         var oldValue = this.isAnyOn;
@@ -204,7 +243,8 @@ class PushedNotificationAccessory {
     }
     
     setResetIntervalValue(newValue, callback) {
-        this.resetInterval = newValue;
+        this.resetInterval = Math.round(newValue);
+        this.persistData();
         callback();
     }
     
@@ -212,7 +252,8 @@ class PushedNotificationAccessory {
         callback(null, this.resetInterval);
     }
     setDefaultIntervalValue(newValue, callback) {
-        this.defaultInterval = newValue;
+        this.defaultInterval = Math.round(newValue);
+        this.persistData();
         callback();
     }
     
